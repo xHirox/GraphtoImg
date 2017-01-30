@@ -1,0 +1,171 @@
+Option Explicit
+
+' MsgBox用
+Private Const err_body1 As String = "ディレクトリが存在しません" & vbCr & "指定のファイルパスを確認してください", err_title1 As String = "存在なし", _
+            info_body1 As String = "出力が終了しました", info_title1 As String = "出力終了"
+' 判定用
+Private Const ERR As String = "error", OK  As String = "ok", _
+            T_filename As String = "filename", T_filepath As String = "filepath", T_ext = "extension", _
+            T_PNG As String = ".png", T_JPG As String = ".jpg", T_GIF As String = ".gif", T_BMP As String = ".bmp", _
+            S_PNG As String = "PNG", S_JPG As String = "JPEG", S_GIF As String = "GIF", S_BMP As String = "BMP", _
+            EX_ALL As String = "All Export"
+' 動作用
+Private Const Separator As String = "_", DEF_FILENAME As String = "Graph"
+' セル番地用
+Private Const fname_V As Long = 2, fname_H As Long = 3, fpath_V As Long = 3, fpath_H As Long = 3, ext_V As Long = 2, ext_H As Long = 10
+
+
+
+' Chart Export
+Sub ChartExport()
+    Dim chartObj As Variant
+    Dim fpath, fname, flag, exttype, s_type, ObjName, ObjText As String
+    Dim ObjCnt, i, GNameCnt As Long
+    
+    ' --- ExportData Check ---
+    ' Get FileName/FilePath/Extension
+    fname = ThisWorkbook.ActiveSheet.Cells(fname_V, fname_H)
+    fpath = ThisWorkbook.ActiveSheet.Cells(fpath_V, fpath_H)
+    exttype = ThisWorkbook.ActiveSheet.Cells(ext_V, ext_H)
+    
+    ' Check Filename/FilePath/Extension
+    fname = FileStringCheck(fname, T_filename)
+    fpath = FileStringCheck(fpath, T_filepath)
+    exttype = FileStringCheck(exttype, T_ext)
+    s_type = ExtCheck(exttype)
+    
+    ' Directory Check
+    flag = DirCheck(fpath)
+    If (fpath = ERR) Then
+        Exit Sub
+    End If
+    
+    ' --- get caller ---
+    ObjName = Application.Caller
+    ObjText = getShapeText(ObjName)
+
+    ' --- Graph/Chart Export ---
+    ObjCnt = ThisWorkbook.ActiveSheet.ChartObjects.Count ' Get Chart Counts
+    If (ObjText = EX_ALL) Then
+        Call Export_ALL(ObjCnt, fpath & "\" & fname, exttype, s_type, False)
+    Else
+        Call Export_Single(ObjCnt, ObjName, ObjText, fpath & "\" & fname & "_" & ObjText, exttype, s_type, False)
+    End If
+
+    ' --- end of process ---
+    ThisWorkbook.ActiveSheet.Cells(1, 1).Select
+    MsgBox info_body1, vbInformation, info_title1
+
+End Sub
+
+' Single Chart Export
+Private Function Export_Single(ByVal ocnt As Long, ByVal oname As String, ByVal otext As String, ByVal fname As String, ByVal ext As String, ByVal ex_type As String, ByVal flag As Boolean)
+    Dim obj As Variant
+    Dim objstr As String
+    Dim i As Long
+    
+    For i = 1 To ocnt
+        objstr = ThisWorkbook.ActiveSheet.ChartObjects(i).Name
+        
+        Debug.Print objstr & "," & otext
+        If (objstr = otext) Then
+            obj = ThisWorkbook.ActiveSheet.ChartObjects(i).Chart.Export(fname & ext, ex_type, False)
+        End If
+    Next i
+
+End Function
+
+' All Chart Export
+Private Function Export_ALL(ByVal cnt As Long, ByVal fname As String, ByVal ext As String, ByVal ex_type As String, ByVal flag As Boolean)
+    Dim i As Long
+    Dim obj As Variant
+    
+    For i = 1 To cnt
+        ThisWorkbook.ActiveSheet.Select
+        obj = ThisWorkbook.ActiveSheet.ChartObjects(i).Chart.Export(fname & "_" & i & ext, ex_type, flag)
+    Next i
+    
+End Function
+
+' Get Shape(Object) Text
+Function getShapeText(ByVal oname) As String
+    Dim shp As Object
+    Dim str As String
+    
+    Set shp = ThisWorkbook.ActiveSheet.Shapes(oname)
+    str = shp.TextFrame.Characters.Text
+    
+    getShapeText = str
+    
+End Function
+
+' Extension Check
+Function ExtCheck(ByVal ext As String) As String
+    Dim str As String
+    
+    Select Case ext
+        
+        Case T_PNG
+            str = S_PNG
+        Case T_JPG
+            str = S_JPG
+        Case T_GIF
+            str = S_GIF
+        Case T_BMP
+            str = S_BMP
+            
+    End Select
+    
+    ExtCheck = str
+    
+End Function
+
+
+' Filename/FilePath Check
+Function FileStringCheck(ByVal str As String, ByVal strtype As String) As String
+    Dim revstr As String
+    
+    ' strtypeで判定内容を判断
+    Select Case strtype
+    
+        Case T_filename ' Filename
+            If (str = vbNullString) Then
+                revstr = DEF_FILENAME
+            Else
+                revstr = str
+            End If
+            
+        Case T_filepath ' Filepath
+            If (str = vbNullString) Then
+                revstr = ThisWorkbook.Path
+            Else
+                revstr = str
+            End If
+            
+        Case T_ext ' Extenstion
+            If (str = vbNullString) Then
+                revstr = T_PNG
+            Else
+                revstr = str
+            End If
+
+    End Select
+    
+    FileStringCheck = revstr
+    
+End Function
+
+' Directory Check
+Function DirCheck(ByVal filepath) As String
+    Dim flag As String
+
+    If (Dir(filepath, vbDirectory) = vbNullString) Then
+        MsgBox err_body1, vbExclamation, err_title1
+        flag = ERR
+    Else
+        flag = OK
+    End If
+    
+    DirCheck = flag
+    
+End Function
